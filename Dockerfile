@@ -1,10 +1,14 @@
-# Basic flask container
+FROM tiangolo/uwsgi-nginx-flask:python3.6
 
-FROM fanoftal2/flask-crud-base:1
+COPY requirements.txt /
 
-ADD ./app /home/app/
-WORKDIR /home/app/
+WORKDIR /
 
-EXPOSE 5000
+RUN pip install -r ./requirements.txt --no-cache-dir
 
-ENTRYPOINT ["python3", "app.py"]
+COPY app/ /app/
+
+WORKDIR /app
+
+ENV FLASK_APP=app.py
+CMD flask db upgrade && flask run -h 0.0.0.0 -p 5000

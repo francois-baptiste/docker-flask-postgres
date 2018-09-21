@@ -1,81 +1,44 @@
-import time
-from flask import Flask, render_template, flash, redirect, request, url_for
+import os
+
+from flask import Flask, render_template, request
+from sqlalchemy.sql import text
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
+from passlib.hash import sha1_crypt
 
-
-DBUSER = 'marco'
-DBPASS = 'foobarbaz'
-DBHOST = 'db'
-DBPORT = '5432'
-DBNAME = 'testdb'
-
+database_uri = 'postgresql+psycopg2://{dbuser}:{dbpass}@{dbhost}/{dbname}'.format(
+    dbuser=os.environ['DBUSER'],
+    dbpass=os.environ['DBPASS'],
+    dbhost=os.environ['DBHOST'],
+    dbname=os.environ['DBNAME']
+)
 
 app = Flask(__name__)
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///students.sqlite3'
-app.config['SQLALCHEMY_DATABASE_URI'] = \
-    'postgresql+psycopg2://{user}:{passwd}@{host}:{port}/{db}'.format(
-        user=DBUSER,
-        passwd=DBPASS,
-        host=DBHOST,
-        port=DBPORT,
-        db=DBNAME)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = 'foobarbaz'
+app.config.update(
+    SQLALCHEMY_DATABASE_URI=database_uri,
+    SQLALCHEMY_TRACK_MODIFICATIONS=False,
+)
 
-
+# initialize the database connection
 db = SQLAlchemy(app)
 
+# initialize database migration management
+migrate = Migrate(app, db)
 
-class students(db.Model):
-    id = db.Column('student_id', db.Integer, primary_key=True)
-    name = db.Column(db.String(100))
-    city = db.Column(db.String(50))
-    addr = db.Column(db.String(200))
+sql = "select * from passwords WHERE substring(hash for 7) = substring(digest('{password_string}','sha1') for 7) and hash = digest('{password_string}','sha1')"
 
-    def __init__(self, name, city, addr):
-        self.name = name
-        self.city = city
-        self.addr = addr
+@app.route('/')
+def view_registration_form():
+    return render_template('pw_form.html')
 
 
-def database_initialization_sequence():
-    db.create_all()
-    test_rec = students(
-            'John Doe',
-            'Los Angeles',
-            '123 Foobar Ave')
 
-    db.session.add(test_rec)
-    db.session.rollback()
-    db.session.commit()
-
-
-@app.route('/', methods=['GET', 'POST'])
-def home():
-    if request.method == 'POST':
-        if not request.form['name'] or not request.form['city'] or not request.form['addr']:
-            flash('Please enter all the fields', 'error')
-        else:
-            student = students(
-                    request.form['name'],
-                    request.form['city'],
-                    request.form['addr'])
-
-            db.session.add(student)
-            db.session.commit()
-            flash('Record was succesfully added')
-            return redirect(url_for('home'))
-    return render_template('show_all.html', students=students.query.all())
-
-
-if __name__ == '__main__':
-    dbstatus = False
-    while dbstatus == False:
-        try:
-            db.create_all()
-        except:
-            time.sleep(2)
-        else:
-            dbstatus = True
-    database_initialization_sequence()
-    app.run(debug=True, host='0.0.0.0')
+@app.route('/register', methods=['POST'])
+def register_guest():
+    password_string = request.form.get('password_string')
+    results = db.engine.execute(text(sql.format(password_string=password_string)))
+    for pw_number in results:
+        return render_template(
+            'pw_result.html', myresult="You have found the pwned password number {pw_number}!".format(pw_number=pw_number['id']))
+    return render_template(
+        'pw_result.html', myresult="Sorry, it's a fail!")

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}It's time to find a pwned password{% endblock %}
+{% block head %}
+  {{ super() }}
+{% endblock %}
+{% block content %}
+  <h1>It's time to find a pwned password</h1>
+  <form action="/register" method="POST">
+    <div class="form-group">
+    <label for="namefield">Name</label>
+    <input type="text" class="form-control" id="namefield" name="password_string" aria-describedby="emailHelp" placeholder="Type a word here ... ">
+    <small id="emailHelp" class="form-text text-muted">Make cybersecurity great again!</small>
+  </div>
+  <button type="submit" class="btn btn-default">Test it!</button>
+  </form>
+{% endblock %}

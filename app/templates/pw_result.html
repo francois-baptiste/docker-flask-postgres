@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Test result{% endblock %}
+{% block head %}
+  {{ super() }}
+{% endblock %}
+{% block content %}
+  <h1>{{ myresult }}</h1>
+  <a href="/">Try again</a>
+{% endblock %}
